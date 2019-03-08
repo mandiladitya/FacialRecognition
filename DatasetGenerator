@@ -1,0 +1,50 @@
+import cv2
+import numpy as np
+import requests
+import sqlite3
+
+#cam = cv2.VideoCapture(0)
+detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+
+
+def insertOrUpdate(id, Name , Age, Gender, Designation):
+    conn = sqlite3.connect("facebase.db")
+    cmd = "SELECT * FROM Peoples WHERE id = " + str(id)
+    cursor = conn.execute(cmd)
+    isRecordExist = 0
+    for row in cursor:
+        isRecordExist = 1
+    if (isRecordExist == 1):
+        cmd = "UPDATE Peoples SET Name =" + str(Name) + "WHERE ID= " + str(id)
+    else:
+        cmd = "INSERT INTO Peoples(id,Name,Age,Gender,Designation) Values(" + str(id) + "," + str(Name) + "," + str(Age) + "," + str(Gender) + "," + str(Designation)+")"  
+    conn.execute(cmd)
+    conn.commit()
+    conn.close()
+
+
+id = raw_input('Enter your id\n')
+Name = raw_input('Enter your name\n')
+Age = raw_input('Enter your Age\n')
+Gender = raw_input('Enter your Gender\n')
+Designation = raw_input('Enter your Designation\n')
+
+insertOrUpdate(id, Name, Age, Gender, Designation)
+sample = 0
+while True:
+    req = requests.get('http://192.168.43.1:8080/shot.jpg')
+    arr = np.asarray(bytearray(req.content), dtype=np.uint8)
+    img = cv2.imdecode(arr, -1) # 'Load it as it is'
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    faces = detector.detectMultiScale(gray, 1.3, 5)
+    for (x, y, w, h) in faces:
+        sample = sample + 1
+        cv2.imwrite("dataSet2/user." + str(id) + '.' + str(sample) + ".jpg", gray[y:y + h, x:x + w])
+        cv2.rectangle(img, (x, y), (x + w, y + h), (225, 0, 0), 2)
+        cv2.waitKey(100)
+    cv2.imshow('img', img)
+
+    if (sample > 5):
+        break
+cv2.destroyAllWindows()
+
